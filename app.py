@@ -61,7 +61,7 @@ def get_video(playlist_url, max_videos):
 
     return limited_video_links
 
-def download(video_links, download_dir):
+def download(video_links, download_dir, video_format, merge_output_format):
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 
@@ -71,9 +71,13 @@ def download(video_links, download_dir):
         try:
             ydl_opts = {
                 'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
-                'format': 'best',
+                'format': video_format,
                 'noplaylist': True, 
             }
+
+            if merge_output_format:
+                ydl_opts['merge_output_format'] = merge_output_format
+
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 print(f"{PURPLE}Downloading video {i}/{len(video_links)}: {link}{RESET}")
                 ydl.download([link])
@@ -98,4 +102,14 @@ if __name__ == "__main__":
     for i, link in enumerate(video_links, start=1):
         print(f"{i}. {link}")
 
-    download(video_links, download_dir)
+
+    print("\nChoose Resolution:")
+    print("1) 360p \n2) up to 1080p\n")
+    choice = int(input("Choose Number: "))
+    
+    if choice == 1:
+        download(video_links, download_dir, video_format='best', merge_output_format=None)
+    elif choice == 2:
+        download(video_links, download_dir, video_format='bestvideo+bestaudio/best', merge_output_format='mp4')
+    else:
+        print("Incorrect Choice!")
