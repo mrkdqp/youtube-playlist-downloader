@@ -7,7 +7,7 @@ The YouTube Playlist Downloader is a Python script that retrieves and downloads 
 
 ### Version 2.0
 
-- **Enhanced Resolution Options:** Users can now choose to download videos in 360p or any resolution up to 1080p. This provides greater flexibility in selecting video quality based on user preferences or available storage space.
+- **Enhanced Resolution Options:** Users can now choose to download videos in 360p or all resolutions up to 1080p that the youtube video has. This provides greater flexibility in selecting video quality based on user preferences or available storage space.
 - **Improved Error Handling:** Enhanced mechanisms for handling errors and providing more informative feedback if something goes wrong during video retrieval or downloading.
 - **User Interface Enhancements:** Updated prompts and user interactions for a smoother experience when specifying download options.
 
@@ -17,7 +17,7 @@ The YouTube Playlist Downloader is a Python script that retrieves and downloads 
 - **Download Limitation:** Allows the user to specify the number of videos to download.
 - **Video Downloading:** Uses `yt-dlp` to download videos in the best available format.
 - **Progress Tracking:** Displays download progress in the terminal.
-- **Resolution Selection:** Choose to download videos in 360p or any resolution up to 1080p.
+- **Resolution Selection:** Choose to download videos in 360p or all resolutions up to 1080p.
 
 ## Requirements
 
