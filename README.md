@@ -72,6 +72,11 @@ To execute the script, follow these steps:
 ```bash
 Enter a Public or Unlisted YouTube playlist URL: https://www.youtube.com/playlist?list=PL0vfts4VzfNjdPuyk9SJDIvpsOjNgU1bs
 Enter the maximum number of videos to retrieve: 2
+Choose Resolution:
+1) 360p
+2) up to 1080p
+3) .mp3
+Choose Number: 2
 ```
 
 With this example, the script will retrieve up to 2 video links from the playlist and download them into a `downloads` directory within the current script directory.
