@@ -1,3 +1,4 @@
+import concurrent.futures
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -61,29 +62,44 @@ def get_video(playlist_url, max_videos):
 
     return limited_video_links
 
-def download(video_links, download_dir, video_format, merge_output_format):
+def download_link(link, download_dir, format, merge_output_format, i, total):
+    try:
+        ydl_opts = {
+            'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
+            'format': format,
+            'noplaylist': True,
+        }
+
+        if merge_output_format == 'mp3':
+            ydl_opts['postprocessors'] = [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+        elif merge_output_format == 'mp4':
+            ydl_opts['format'] = 'bestvideo+bestaudio[ext=mp4]/best[ext=mp4]'
+
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            print(f"{PURPLE}Downloading video {i}/{total}: {link}{RESET}")
+            ydl.download([link])
+            print(f"{GREEN}Downloaded {i}/{total}: {link}{RESET}")
+    except Exception as e:
+        print(f"Failed to download video {i}/{total}: {link}\nError: {e}")
+
+def download(video_links, download_dir, format, merge_output_format):
     if not os.path.exists(download_dir):
         os.makedirs(download_dir)
 
     print(f"\n{PURPLE}Number of videos to download: {len(video_links)}{RESET}")
 
-    for i, link in enumerate(video_links, start=1):
-        try:
-            ydl_opts = {
-                'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
-                'format': video_format,
-                'noplaylist': True, 
-            }
-
-            if merge_output_format:
-                ydl_opts['merge_output_format'] = merge_output_format
-
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                print(f"{PURPLE}Downloading video {i}/{len(video_links)}: {link}{RESET}")
-                ydl.download([link])
-                print(f"{GREEN}Downloaded {i}/{len(video_links)}: {link}{RESET}")
-        except Exception as e:
-            print(f"Failed to download video {i}/{len(video_links)}: {link}\nError: {e}")
+    total = len(video_links)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        futures = [
+            executor.submit(download_link, link, download_dir, format, merge_output_format, i+1, total)
+            for i, link in enumerate(video_links)
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
 
 if __name__ == "__main__":
     playlist_url = input("Enter the YouTube playlist URL: ")
@@ -102,14 +118,15 @@ if __name__ == "__main__":
     for i, link in enumerate(video_links, start=1):
         print(f"{i}. {link}")
 
-
     print("\nChoose Resolution:")
-    print("1) 360p \n2) up to 1080p\n")
+    print("1) 360p \n2) up to 1080p\n3) .mp3\n")
     choice = int(input("Choose Number: "))
     
     if choice == 1:
-        download(video_links, download_dir, video_format='best', merge_output_format=None)
+        download(video_links, download_dir, format='best', merge_output_format=None)
     elif choice == 2:
-        download(video_links, download_dir, video_format='bestvideo+bestaudio/best', merge_output_format='mp4')
+        download(video_links, download_dir, format='bestvideo+bestaudio/best', merge_output_format='mp4')
+    elif choice == 3:
+        download(video_links, download_dir, format='bestaudio/best', merge_output_format='mp3')
     else:
         print("Incorrect Choice!")
