@@ -15,51 +15,83 @@ PURPLE = "\033[34m"
 GREEN = "\033[32m"
 
 def clean_url(url):
+    # Remove extra parameters for a clean URL
     return re.sub(r'&pp=[^&]*', '', url)
 
-def get_video(playlist_url, max_videos):
+def get_video_links(url, max_videos):
     chrome_options = Options()
-    chrome_options.add_argument("--headless") 
-    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")  # Disable GPU hardware acceleration
+    chrome_options.add_argument("--window-size=1920x1080")  # Set a default window size
+    chrome_options.add_argument("--no-sandbox") 
     chrome_options.add_argument("--disable-dev-shm-usage")
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-    driver.get(playlist_url)
+    driver.get(url)
 
-    time.sleep(5) 
+    time.sleep(5)  # Wait for the page to load
 
-    video_links = set()  
+    video_links = set()
     last_count = 0
-    
-    while len(video_links) < max_videos:
-        elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/watch?v=")]')
-        for element in elements:
-            href = element.get_attribute('href')
-            if href:
-                clean_href = clean_url(href)
-                if clean_href.startswith("https://www.youtube.com/watch?v=") and 'index=' in clean_href:
-                    video_links.add(clean_href)
-                    if len(video_links) >= max_videos:
-                        break
 
-        current_count = len(video_links)
-        if current_count > last_count:
-            percentage = (current_count / max_videos) * 100
-            sys.stdout.write(f"\rProgress: {current_count}/{max_videos} ({percentage:.2f}%)")
-            sys.stdout.flush()
-            last_count = current_count
+    # Check if URL is for a YouTube Channel (videos section)
+    if '/videos' in url:
+        print(f"\n{PURPLE}Detected a YouTube channel URL. Scraping video links...{RESET}")
+        
+        while len(video_links) < max_videos:
+            elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/watch?v=")]')
+            for element in elements:
+                href = element.get_attribute('href')
+                if href:
+                    clean_href = clean_url(href)
+                    if clean_href.startswith("https://www.youtube.com/watch?v="):
+                        video_links.add(clean_href)
+                        if len(video_links) >= max_videos:
+                            break
+            
+            current_count = len(video_links)
+            if current_count > last_count:
+                percentage = (current_count / max_videos) * 100
+                sys.stdout.write(f"\rProgress: {current_count}/{max_videos} ({percentage:.2f}%)")
+                sys.stdout.flush()
+                last_count = current_count
+            
+            if len(video_links) < max_videos:
+                driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+                time.sleep(5)  # Wait for more videos to load
 
-        if len(video_links) < max_videos:
-            driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            time.sleep(5) 
+    else:
+        # Handle Playlist URL (same as before)
+        print(f"\n{PURPLE}Detected a YouTube playlist URL. Scraping video links...{RESET}")
+        while len(video_links) < max_videos:
+            elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/watch?v=") or contains(@href, "/shorts/")]')
+            for element in elements:
+                href = element.get_attribute('href')
+                if href:
+                    clean_href = clean_url(href)
+                    # Ensure it matches a YouTube video or Shorts URL
+                    if (clean_href.startswith("https://www.youtube.com/watch?v=") and 'index=' in clean_href) or \
+                       (clean_href.startswith("https://www.youtube.com/shorts/")):
+                        video_links.add(clean_href)
+                        if len(video_links) >= max_videos:
+                            break
+
+            current_count = len(video_links)
+            if current_count > last_count:
+                percentage = (current_count / max_videos) * 100
+                sys.stdout.write(f"\rProgress: {current_count}/{max_videos} ({percentage:.2f}%)")
+                sys.stdout.flush()
+                last_count = current_count
+
+            if len(video_links) < max_videos:
+                driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+                time.sleep(5)  # Wait for more videos to load
 
     driver.quit()
 
     limited_video_links = list(video_links)[:max_videos]
-
-    print(f"\nCollected {len(limited_video_links)} video links out of requested {max_videos}.")
-
+    print(f"\nCollected {len(limited_video_links)} video links.")
     return limited_video_links
 
 def download_link(link, download_dir, format, merge_output_format, i, total):
@@ -102,18 +134,18 @@ def download(video_links, download_dir, format, merge_output_format):
             future.result()
 
 if __name__ == "__main__":
-    playlist_url = input("Enter the YouTube playlist URL: ")
+    url = input("Enter the YouTube playlist or channel URL: ")
     max_videos = int(input("Enter the maximum number of videos to retrieve: "))
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     download_dir = os.path.join(script_dir, "downloads")
     
-    video_links = get_video(playlist_url, max_videos)
+    video_links = get_video_links(url, max_videos)
     
     if len(video_links) < max_videos:
-        print(f"\nWarning: The playlist only contains {len(video_links)} video(s), which is less than the requested {max_videos}.")
-
-    print(f"\nVideo links in the playlist (up to {len(video_links)}):")
+        print(f"\nWarning: Only {len(video_links)} video(s) found, which is less than the requested {max_videos}.")
+    
+    print(f"\nVideo links (up to {len(video_links)}):")
     
     for i, link in enumerate(video_links, start=1):
         print(f"{i}. {link}")
